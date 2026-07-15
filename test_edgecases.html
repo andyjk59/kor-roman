@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Korean Romanizer — Edge Case Test</title>
+<style>
+  body { font-family: 'IBM Plex Mono', monospace, sans-serif; background:#0e0e10; color:#e2e2e6; margin:0; padding:24px; font-size:14px; }
+  h1 { color:#fff; font-size:1.4em; margin-bottom:4px; }
+  .subtitle { color:#888; margin-bottom:20px; font-size:.85em; }
+  .progress-bar-wrap { background:#1e1e22; border-radius:8px; height:12px; margin-bottom:20px; overflow:hidden; }
+  .progress-bar { height:100%; background:linear-gradient(90deg,#4ade80,#22d3ee); width:0; transition:width .08s; }
+  .status { color:#aaa; margin-bottom:20px; font-size:.85em; }
+  .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+  .stat-card { background:#1a1a1e; border:1px solid #2e2e35; border-radius:10px; padding:16px 20px; }
+  .stat-card .label { color:#888; font-size:.75em; text-transform:uppercase; letter-spacing:.06em; }
+  .stat-card .value { font-size:2em; font-weight:700; margin:6px 0 2px; }
+  .stat-card .sub { font-size:.75em; color:#888; }
+  .pass-value{color:#4ade80;} .fail-value{color:#f87171;} .overall-value{color:#fbbf24;}
+  table { width:100%; border-collapse:collapse; font-size:.82em; margin-bottom:24px; }
+  thead th { background:#1a1a1e; color:#aaa; text-align:left; padding:8px 10px; border-bottom:1px solid #2e2e35; font-weight:500; font-size:.75em; text-transform:uppercase; letter-spacing:.05em; }
+  tbody tr:nth-child(even){ background:#131316; }
+  td { padding:6px 10px; border-bottom:1px solid #1c1c21; }
+  .pass-badge{color:#4ade80;} .fail-badge{color:#f87171;}
+  .tier-pill{ background:#2a2a34; color:#a0a0c0; border-radius:4px; padding:1px 6px; font-size:.75em; }
+  .section-head{ color:#aaa; font-size:.75em; text-transform:uppercase; letter-spacing:.08em; margin:24px 0 10px; border-bottom:1px solid #2e2e35; padding-bottom:6px; }
+  #results{ display:none; }
+</style>
+</head>
+<body>
+<h1>Korean Romanizer — Edge Case Test</h1>
+<p class="subtitle" id="subtitle">Loading…</p>
+<div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+<p class="status" id="status">Initialising…</p>
+<div id="results">
+  <div class="summary-grid" id="summary-grid"></div>
+  <div class="section-head">Results</div>
+  <table><thead><tr><th>Korean</th><th>Expected (RR)</th><th>Got</th><th>Tier</th><th>Rule tested</th><th></th></tr></thead>
+  <tbody id="body"></tbody></table>
+</div>
+
+<!-- Load engine sources with a cache-buster so the simple dev server can't
+     serve a stale copy after edits. -->
+<script>
+  var __v = '?v=' + Date.now();
+  ['hangul.js','romanize.js','exceptions.js'].forEach(function(f){
+    document.write('<scr'+'ipt src="'+f+__v+'"></scr'+'ipt>');
+  });
+</script>
+<script>
+// [korean, expectedRR, tier, ruleDescription]
+// Expected values follow the NIKL (National Institute of Korean Language)
+// Revised Romanization guidelines and their official example list.
+const EDGE = [
+  // --- TIER: core (rules the engine implements; regression guard) ---
+  ['백마',   'baengma',    'core', 'ㄱ→ㅇ nasalization before ㅁ'],
+  ['신문로', 'sinmunno',   'core', 'ㄹ→ㄴ after ㄴ'],
+  ['종로',   'jongno',     'core', 'ㄹ→ㄴ after ㅇ'],
+  ['왕십리', 'wangsimni',  'core', 'ㅂ+ㄹ → ㅁ+ㄴ (double nasalization)'],
+  ['별내',   'byeollae',   'core', 'ㄹ+ㄴ → ㄹㄹ liquidization'],
+  ['신라',   'silla',      'core', 'ㄴ+ㄹ → ㄹㄹ liquidization'],
+  ['난로',   'nallo',      'core', 'ㄴ+ㄹ → ㄹㄹ'],
+  ['깎다',   'kkakda',     'core', 'ㄲ final neutralizes to ㄱ'],
+  ['값',     'gap',        'core', 'ㅄ → ㅂ word-final'],
+  ['몫',     'mok',        'core', 'ㄳ → ㄱ word-final'],
+  ['읽다',   'ikda',       'core', 'ㄺ → ㄱ before consonant'],
+  ['닭',     'dak',        'core', 'ㄺ → ㄱ word-final'],
+  ['흙',     'heuk',       'core', 'ㄺ → ㄱ word-final'],
+  ['여덟',   'yeodeol',    'core', 'ㄼ → ㄹ word-final'],
+  ['넋',     'neok',       'core', 'ㄳ → ㄱ word-final'],
+  ['앉다',   'anda',       'core', 'ㄵ → ㄴ before consonant'],
+  ['없다',   'eopda',      'core', 'ㅄ → ㅂ before consonant'],
+  ['좋아',   'joa',        'core', 'ㅎ deletes before vowel'],
+  ['좋은',   'joeun',      'core', 'ㅎ deletes before vowel'],
+  ['놓아',   'noa',        'core', 'ㅎ deletes before vowel'],
+  ['닭이',   'dalgi',      'core', 'ㄺ liaison splits (l + g)'],
+  ['값이',   'gapsi',      'core', 'ㅄ liaison splits (p + s)'],
+
+  // --- TIER: advanced (phonology beyond the current rule set) ---
+  ['같이',   'gachi',      'advanced', 'ㄷ/ㅌ + 이 palatalization → ch'],
+  ['굳이',   'guji',       'advanced', 'ㄷ + 이 palatalization → j'],
+  ['해돋이', 'haedoji',    'advanced', 'ㄷ + 이 palatalization → j'],
+  ['좋고',   'joko',       'advanced', 'ㅎ + ㄱ aspiration → k'],
+  ['놓다',   'nota',       'advanced', 'ㅎ + ㄷ aspiration → t'],
+  ['잡혀',   'japyeo',     'advanced', 'ㅂ + ㅎ aspiration → p'],
+  ['낳지',   'nachi',      'advanced', 'ㅎ + ㅈ aspiration → ch'],
+  ['축하',   'chuka',      'advanced', 'ㄱ + ㅎ aspiration → k'],
+  ['학여울', 'hangnyeoul', 'advanced', 'ㄴ-insertion + nasalization'],
+  ['알약',   'allyak',     'advanced', 'ㄴ-insertion + ㄹ assimilation'],
+  ['꽃잎',   'kkonnip',    'advanced', 'ㄴ-insertion + nasalization'],
+  ['맨입',   'maennip',    'advanced', 'ㄴ-insertion'],
+  ['색연필', 'saengnyeonpil','advanced','ㄴ-insertion + nasalization'],
+  ['밟다',   'bapda',      'advanced', 'ㄼ irregular → ㅂ (lexical)'],
+];
+
+function excLookup(word, system){ const h = Exceptions.lookupByHangul(word); return h ? (system==='RR'?h.rr:h.mr) : null; }
+function rom(w){ return Romanize.romanize(w, 'RR', excLookup).text; }
+
+async function run() {
+  const total = EDGE.length;
+  document.getElementById('subtitle').textContent = `${total} known edge cases (RR), graded against NIKL guidelines`;
+  const rows = [];
+  const tiers = {};
+  for (let i = 0; i < EDGE.length; i++) {
+    const [k, exp, tier, rule] = EDGE[i];
+    const got = rom(k);
+    const pass = got.toLowerCase() === exp.toLowerCase();
+    rows.push({ k, exp, got, tier, rule, pass });
+    if (!tiers[tier]) tiers[tier] = { pass:0, total:0 };
+    tiers[tier].total++; if (pass) tiers[tier].pass++;
+    document.getElementById('progress-bar').style.width = ((i+1)/total*100)+'%';
+    document.getElementById('status').textContent = `Testing ${i+1}/${total}: ${k}`;
+    if (i % 4 === 0) await new Promise(r=>setTimeout(r,0));
+  }
+  document.getElementById('status').textContent = 'Complete.';
+  render(rows, tiers, total);
+}
+
+function render(rows, tiers, total) {
+  const pass = rows.filter(r=>r.pass).length;
+  const core = tiers.core, adv = tiers.advanced;
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="stat-card"><div class="label">Core rules</div><div class="value pass-value">${(core.pass/core.total*100).toFixed(0)}%</div><div class="sub">${core.pass}/${core.total} passed</div></div>
+    <div class="stat-card"><div class="label">Advanced phonology</div><div class="value ${adv.pass===adv.total?'pass-value':'fail-value'}">${(adv.pass/adv.total*100).toFixed(0)}%</div><div class="sub">${adv.pass}/${adv.total} passed</div></div>
+    <div class="stat-card"><div class="label">Overall</div><div class="value overall-value">${(pass/total*100).toFixed(1)}%</div><div class="sub">${pass}/${total} passed</div></div>`;
+  const tb = document.getElementById('body');
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.k}</td><td>${r.exp}</td><td style="color:${r.pass?'#4ade80':'#f87171'}">${r.got}</td><td><span class="tier-pill">${r.tier}</span></td><td style="color:#999">${r.rule}</td><td class="${r.pass?'pass-badge':'fail-badge'}">${r.pass?'✓':'✗'}</td>`;
+    tb.appendChild(tr);
+  }
+  document.getElementById('results').style.display = 'block';
+}
+run().catch(e=>{ document.getElementById('status').textContent='Error: '+e.message; console.error(e); });
+</script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Korean Romanizer — Accuracy Test</title>
+<style>
+  body { font-family: 'IBM Plex Mono', monospace, sans-serif; background: #0e0e10; color: #e2e2e6; margin: 0; padding: 24px; font-size: 14px; }
+  h1 { color: #fff; font-size: 1.4em; margin-bottom: 4px; }
+  .subtitle { color: #888; margin-bottom: 24px; font-size: 0.85em; }
+  .progress-bar-wrap { background: #1e1e22; border-radius: 8px; height: 12px; margin-bottom: 24px; overflow: hidden; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, #4ade80, #22d3ee); width: 0; transition: width 0.1s; border-radius: 8px; }
+  .status { color: #aaa; margin-bottom: 24px; font-size: 0.85em; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: #1a1a1e; border: 1px solid #2e2e35; border-radius: 10px; padding: 16px 20px; }
+  .stat-card .label { color: #888; font-size: 0.75em; text-transform: uppercase; letter-spacing: .06em; }
+  .stat-card .value { font-size: 2em; font-weight: 700; margin: 6px 0 2px; }
+  .stat-card .sub { font-size: 0.75em; color: #888; }
+  .pass-value { color: #4ade80; }
+  .fail-value { color: #f87171; }
+  .overall-value { color: #fbbf24; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+  thead th { background: #1a1a1e; color: #aaa; text-align: left; padding: 8px 10px; border-bottom: 1px solid #2e2e35; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; font-size: 0.75em; }
+  tbody tr:nth-child(even) { background: #131316; }
+  td { padding: 6px 10px; border-bottom: 1px solid #1c1c21; vertical-align: middle; }
+  .pass-badge { color: #4ade80; }
+  .fail-badge { color: #f87171; }
+  .cat-pill { background: #2a2a34; color: #a0a0c0; border-radius: 4px; padding: 1px 6px; font-size: 0.75em; }
+  .section-head { color: #aaa; font-size: 0.75em; text-transform: uppercase; letter-spacing: .08em; margin: 28px 0 10px; border-bottom: 1px solid #2e2e35; padding-bottom: 6px; }
+  .cat-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+  .cat-card { background: #1a1a1e; border: 1px solid #2e2e35; border-radius: 8px; padding: 10px 14px; min-width: 160px; }
+  .cat-card .cn { font-size: 0.8em; color: #ccc; margin-bottom: 4px; }
+  .cat-card .cp { font-size: 0.75em; color: #888; }
+  .bar { display: inline-block; height: 4px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .bar-pass { background: #4ade80; }
+  .bar-fail { background: #f87171; }
+  #log { display: none; }
+</style>
+</head>
+<body>
+<h1>Korean Romanizer — Accuracy Test</h1>
+<p class="subtitle" id="subtitle">Loading dataset…</p>
+<div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+<p class="status" id="status">Initialising…</p>
+<div id="results" style="display:none">
+  <div class="summary-grid" id="summary-grid"></div>
+  <div class="section-head">Accuracy by category</div>
+  <div class="cat-summary" id="cat-summary"></div>
+  <div class="section-head">Failures</div>
+  <div id="failures-section"></div>
+  <div class="section-head">Full results</div>
+  <table id="full-table">
+    <thead><tr><th>Korean</th><th>System</th><th>Expected</th><th>Got</th><th>Category</th><th>Result</th></tr></thead>
+    <tbody id="full-body"></tbody>
+  </table>
+</div>
+
+<script src="hangul.js"></script>
+<script src="romanize.js"></script>
+<script src="exceptions.js"></script>
+<script>
+// ---- Dataset: [korean, expectedRR, expectedMR, category] ----
+const DATASET = [
+  // Official NIKL examples (place names)
+  ['구미',   'Gumi',   'Kumi',   'place'],
+  ['영동',   'Yeongdong', 'Yŏngdong', 'place'],
+  ['백암',   'Baegam', 'Paegam', 'place'],
+  ['합덕',   'Hapdeok', 'Haptŏk', 'place'],
+  ['호법',   'Hobeop',  'Hobŏp',  'place'],
+  ['의왕',   'Uiwang',  'Ŭiwang', 'place'],
+  ['괴산',   'Goesan',  'Koesan', 'place'],
+  ['군위',   'Gunwi',   'Kunwi',  'place'],
+  ['임실',   'Imsil',   'Imsil',  'place'],
+  ['진안',   'Jinan',   'Chinan', 'place'],
+  ['무주',   'Muju',    'Muju',   'place'],
+  ['장수',   'Jangsu',  'Changsu','place'],
+  ['고창',   'Gochang', "Koch'ang",'place'],
+  ['부안',   'Buan',    'Puan',   'place'],
+  ['서울',   'Seoul',   'Sŏul',  'place'],
+  ['부산',   'Busan',   'Pusan',  'place'],
+  ['대구',   'Daegu',   'Taegu',  'place'],
+  ['인천',   'Incheon', "Inch'ŏn",'place'],
+  ['광주',   'Gwangju', 'Kwangju','place'],
+  ['대전',   'Daejeon', 'Taejŏn','place'],
+  ['울산',   'Ulsan',   'Ulsan',  'place'],
+  ['전라',   'Jeolla',  'Chŏlla', 'place'],
+  ['설날',   'Seollal', 'Sŏllal', 'place'],
+
+  // Liaison (연음)
+  ['먹이',  'meogi',   'mŏgi',   'liaison'],
+  ['꽃이',  'kkochi',  "kkoch'i", 'liaison'],
+  ['닭이',  'dalgi',   'talgi',   'liaison'],
+  ['값이',  'gapsi',   'kapsi',   'liaison'],
+  ['앞이',  'api',     "ap'i",    'liaison'],
+  ['밖에',  'bakke',   'pakke',   'liaison'],
+  ['국어',  'gugeo',   'kugŏ',   'liaison'],
+  ['음악이','eumagi',  'ŭmagi',  'liaison'],
+  ['읽어',  'ilgeo',   'ilgŏ',   'liaison'],
+  ['닭을',  'dalgeul', 'talgŭl', 'liaison'],
+  ['삶이',  'salmi',   'salmi',  'liaison'],
+  ['흙이',  'heulgi',  'hŭlgi',  'liaison'],
+  ['읊어',  'eulpeo',  "ŭlp'ŏ",  'liaison'],
+
+  // Nasalization (비음화)
+  ['국민',  'gungmin', 'kungmin', 'nasalization'],
+  ['신라',  'Silla',   'Silla',   'nasalization'],
+  ['항로',  'hangno',  'hangno',  'nasalization'],
+  ['대통령','daetongnyeong',"taet'ongnyŏng",'nasalization'],
+  ['독립',  'dongnip', 'tongnip', 'nasalization'],
+  ['막내',  'mangnae', 'mangnae', 'nasalization'],
+  ['십리',  'simni',   'simni',   'nasalization'],
+  ['합리',  'hamni',   'hamni',   'nasalization'],
+  ['진리',  'jilli',   'chilli',  'nasalization'],
+  ['남루',  'namnu',   'namnu',   'nasalization'],
+  ['심리',  'simni',   'simni',   'nasalization'],
+
+  // ㅎ rules
+  ['놓아',  'noa',     'noa',     'h-rule'],
+  ['않아',  'ana',     'ana',     'h-rule'],
+  ['좋아',  'joa',     'choa',    'h-rule'],
+
+  // Word-final neutralization
+  ['빛',   'bit',     'pit',     'neutralization'],
+  ['낮',   'nat',     'nat',     'neutralization'],
+  ['꽃',   'kkot',    'kkot',    'neutralization'],
+  ['밖',   'bak',     'pak',     'neutralization'],
+  ['밥',   'bap',     'pap',     'neutralization'],
+  ['산',   'san',     'san',     'neutralization'],
+  ['달',   'dal',     'tal',     'neutralization'],
+  ['봄',   'bom',     'pom',     'neutralization'],
+
+  // Common vocabulary
+  ['한국',  'hanguk',  "han'guk",'common'],
+  ['사람',  'saram',   'saram',  'common'],
+  ['물',    'mul',     'mul',    'common'],
+  ['불',    'bul',     'pul',    'common'],
+  ['집',    'jip',     'chip',   'common'],
+  ['학교',  'hakgyo',  'hakkyo', 'common'],
+  ['나라',  'nara',    'nara',   'common'],
+  ['바다',  'bada',    'pada',   'common'],
+  ['하늘',  'haneul',  'hanŭl',  'common'],
+  ['사랑',  'sarang',  'sarang', 'common'],
+  ['아이',  'ai',      'ai',     'common'],
+  ['어머니','eomeoni', 'ŏmŏni',  'common'],
+  ['아버지','abeoji',  'abŏji',  'common'],
+  ['선생님','seonsaengnim','sŏnsaengnim','common'],
+  ['학생',  'haksaeng','haksaeng','common'],
+  ['친구',  'chingu',  "ch'in'gu",'common'],
+  ['음식',  'eumsik',  'ŭmsik',  'common'],
+  ['김치',  'gimchi',  "kimch'i",'common'],
+  ['불고기','bulgogi',  'pulgogi','common'],
+  ['태권도','taekwondo',"t'aekwŏndo",'common'],
+  ['밥',    'bap',     'pap',    'common'],
+
+  // Tense consonants
+  ['빠르다','ppareuda','pparŭda','tense'],
+  ['쪽',    'jjok',    'tchok',  'tense'],
+  ['딸',    'ttal',    'ttal',   'tense'],
+
+  // Aspirated consonants
+  ['파도',  'pado',    "p'ado",  'aspirate'],
+  ['타다',  'tada',    "t'ada",  'aspirate'],
+  ['카드',  'kadeu',   "k'adŭ",  'aspirate'],
+  ['차',    'cha',     "ch'a",   'aspirate'],
+
+  // Phrases
+  ['안녕하세요', 'annyeonghaseyo', 'annyŏnghaseyo', 'phrase'],
+  ['감사합니다', 'gamsahamnida',   'kamsahamnida',  'phrase'],
+
+  // Calendar
+  ['일월',  'irwol',   'irwŏl',  'calendar'],
+  ['이월',  'iwol',    'iwŏl',   'calendar'],
+  ['삼월',  'samwol',  'samwŏl', 'calendar'],
+];
+
+// Mirror the app: check the exceptions dictionary first, then the rule engine.
+function excLookup(word, system) {
+  const hit = Exceptions.lookupByHangul(word);
+  if (!hit) return null;
+  return system === 'RR' ? hit.rr : hit.mr;
+}
+function rom(word, system) {
+  return Romanize.romanize(word, system, excLookup).text;
+}
+
+async function runTests() {
+  const total = DATASET.length * 2;
+  let done = 0;
+  const results = [];
+  const cats = {};
+
+  document.getElementById('subtitle').textContent = `Dataset: ${DATASET.length} entries × 2 systems = ${total} tests`;
+  document.getElementById('status').textContent = 'Running…';
+
+  for (const [korean, expRR, expMR, cat] of DATASET) {
+    if (!cats[cat]) cats[cat] = { RR:{pass:0,fail:0}, MR:{pass:0,fail:0} };
+
+    for (const [sys, exp] of [['RR', expRR], ['MR', expMR]]) {
+      const got = rom(korean, sys);
+      const pass = got.toLowerCase() === exp.toLowerCase();
+      results.push({ korean, sys, exp, got, cat, pass });
+      if (pass) cats[cat][sys].pass++; else cats[cat][sys].fail++;
+      done++;
+      document.getElementById('progress-bar').style.width = (done/total*100) + '%';
+      document.getElementById('status').textContent = `Testing ${done}/${total}: ${korean} [${sys}]`;
+      if (done % 10 === 0) await new Promise(r => setTimeout(r, 0)); // yield to DOM
+    }
+  }
+
+  document.getElementById('status').textContent = 'Complete.';
+  renderResults(results, cats, total);
+}
+
+function renderResults(results, cats, total) {
+  const rrRes = results.filter(r => r.sys === 'RR');
+  const mrRes = results.filter(r => r.sys === 'MR');
+  const rrPass = rrRes.filter(r => r.pass).length;
+  const mrPass = mrRes.filter(r => r.pass).length;
+  const allPass = results.filter(r => r.pass).length;
+
+  // Summary cards
+  const grid = document.getElementById('summary-grid');
+  grid.innerHTML = `
+    <div class="stat-card"><div class="label">RR Accuracy</div><div class="value pass-value">${(rrPass/rrRes.length*100).toFixed(1)}%</div><div class="sub">${rrPass}/${rrRes.length} passed</div></div>
+    <div class="stat-card"><div class="label">MR Accuracy</div><div class="value pass-value">${(mrPass/mrRes.length*100).toFixed(1)}%</div><div class="sub">${mrPass}/${mrRes.length} passed</div></div>
+    <div class="stat-card"><div class="label">Overall</div><div class="value overall-value">${(allPass/total*100).toFixed(1)}%</div><div class="sub">${allPass}/${total} passed</div></div>
+    <div class="stat-card"><div class="label">Failures</div><div class="value fail-value">${total - allPass}</div><div class="sub">across both systems</div></div>
+  `;
+
+  // Category summary
+  const catWrap = document.getElementById('cat-summary');
+  for (const [cat, c] of Object.entries(cats).sort()) {
+    const rrPct = (c.RR.pass/(c.RR.pass+c.RR.fail)*100).toFixed(0);
+    const mrPct = (c.MR.pass/(c.MR.pass+c.MR.fail)*100).toFixed(0);
+    const div = document.createElement('div'); div.className = 'cat-card';
+    div.innerHTML = `<div class="cn">${cat}</div>
+      <div class="cp"><span class="bar bar-pass" style="width:${rrPct*0.8}px"></span>RR ${rrPct}% (${c.RR.pass}/${c.RR.pass+c.RR.fail})</div>
+      <div class="cp" style="margin-top:3px"><span class="bar bar-fail" style="width:${mrPct*0.8}px;background:#22d3ee"></span>MR ${mrPct}% (${c.MR.pass}/${c.MR.pass+c.MR.fail})</div>`;
+    catWrap.appendChild(div);
+  }
+
+  // Failures
+  const failures = results.filter(r => !r.pass);
+  const failSec = document.getElementById('failures-section');
+  if (failures.length === 0) {
+    failSec.innerHTML = '<p style="color:#4ade80">🎉 No failures!</p>';
+  } else {
+    let t = '<table><thead><tr><th>Korean</th><th>System</th><th>Expected</th><th>Got</th><th>Category</th></tr></thead><tbody>';
+    for (const f of failures) {
+      t += `<tr><td>${f.korean}</td><td>${f.sys}</td><td style="color:#4ade80">${f.exp}</td><td style="color:#f87171">${f.got}</td><td><span class="cat-pill">${f.cat}</span></td></tr>`;
+    }
+    t += '</tbody></table>';
+    failSec.innerHTML = t;
+  }
+
+  // Full table
+  const tbody = document.getElementById('full-body');
+  for (const r of results) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.korean}</td><td>${r.sys}</td><td>${r.exp}</td><td>${r.got}</td><td><span class="cat-pill">${r.cat}</span></td><td class="${r.pass?'pass-badge':'fail-badge'}">${r.pass?'✓':'✗'}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('results').style.display = 'block';
+}
+
+runTests().catch(e => { document.getElementById('status').textContent = 'Error: ' + e.message; console.error(e); });
+</script>
+</body>
+</html>
