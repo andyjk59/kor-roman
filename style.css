@@ -1,0 +1,254 @@
+/* Kor-Roman — simple two-tone theme.
+   #6F4685 = full page background; #9E7BB5 = boxes behind content. */
+:root {
+  --bg: #6F4685;      /* full background */
+  --box: #9E7BB5;     /* panels behind text/output */
+  --ink: #241730;     /* primary text (dark, high contrast on the box) */
+  --ink-soft: #45325a;/* secondary text */
+  --line: #86619c;    /* borders / rules */
+  --accent: #55306e;  /* active pill, focus, buttons */
+  --field: #f2ebf7;   /* input field background */
+  --mono: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* The box treatment: every text/output area sits on a #9E7BB5 panel. */
+.hero,
+.input-panel,
+.bridge-section,
+.output-card,
+.notes-strip,
+.exceptions-section,
+.page-footer {
+  background: var(--box);
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+
+/* ---- Hero ---- */
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.hero-title {
+  margin: 0 0 10px;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.hero-sub {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+
+/* ---- Mode pills ---- */
+.mode-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pill {
+  font: inherit;
+  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Input ---- */
+.word-input {
+  width: 100%;
+  font: inherit;
+  font-size: 22px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--ink);
+}
+.word-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.word-input::placeholder { color: #8a6ba0; font-size: 16px; }
+.input-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ---- Syllable bridge ---- */
+.bridge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.bridge-syllable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.bridge-hangul { font-size: 24px; font-weight: 600; }
+.bridge-tick { width: 1px; height: 8px; background: var(--line); }
+.bridge-chip {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.bridge-chip.mr { background: rgba(36, 23, 48, 0.12); }
+
+/* ---- Outputs (RR vs MR comparison) ---- */
+.outputs {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.output-card { flex: 1; min-width: 220px; }
+.output-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.output-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.copy-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.copy-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.output-text {
+  margin: 0;
+  min-height: 1.2em;
+  font-family: var(--mono);
+  font-size: 24px;
+  word-break: break-word;
+}
+
+/* ---- Notes ---- */
+.notes-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.notes-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ---- Exceptions dictionary ---- */
+.exceptions-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.exceptions-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.exceptions-count { font-weight: 400; font-size: 13px; color: var(--ink-soft); }
+.exceptions-table-wrap { margin-top: 14px; overflow-x: auto; }
+.exceptions-note { margin: 0 0 12px; font-size: 13px; color: var(--ink-soft); }
+.exceptions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.exceptions-table th,
+.exceptions-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.exceptions-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+/* ---- Footer ---- */
+.page-footer { font-size: 12.5px; color: var(--ink-soft); }
+.page-footer p { margin: 0; }
+
+/* Keep the hidden attribute working despite the flex/box rules above. */
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
