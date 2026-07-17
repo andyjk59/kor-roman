@@ -81,13 +81,18 @@
     if (!givenHangul) {
       return { hangul: surnameHangul, rr: surRR, mr: surMR, notes: [`Name mode: "${surnameHangul}" (${how}).`] };
     }
+    // Given name, per each system's own convention: RR joins the syllables
+    // (the RR default — 최서은 -> Seoeun), MR hyphenates them (the traditional
+    // MR form — Sŏ-ŭn). The hyphenated side romanizes each syllable on its own,
+    // so no sound changes cross the hyphen; only the first letter is capitalized.
+    const hyphenate = (hangul, sys) => Array.from(hangul).map(c => Romanize.romanize(c, sys).text).join('-');
     const givRR = cap(nameRom(givenHangul, 'RR'));
-    const givMR = cap(nameRom(givenHangul, 'MR'));
+    const givMR = cap(hyphenate(givenHangul, 'MR'));
     return {
       hangul: surnameHangul + givenHangul,
       rr: surRR + ' ' + givRR,
       mr: surMR + ' ' + givMR,
-      notes: [`Name mode: surname "${surnameHangul}" (${how}) + given name "${givenHangul}", each syllable romanized on its own per the name rule (no assimilation across syllables — 용래 → Yongrae).`]
+      notes: [`Name mode: surname "${surnameHangul}" (${how}) + given name "${givenHangul}". RR joins the given name (its default); MR hyphenates it (the traditional MR form).`]
     };
   }
 
